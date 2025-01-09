@@ -11,15 +11,28 @@ encrypt_file() {
 decrypt_file() {
     local input_file=$1
     local output_file=${input_file%.enc}
-    openssl enc -d -aes-256-cbc -pbkdf2 -k "$PASSWORD" -in "$input_file" -out "$output_file"
 
-    if [[ $output_file == *.zip ]]; then
-        unzip -j "$output_file" -d "${output_file%.zip}"
-        rm "$output_file"
+    # Attempt to decrypt the file
+    if openssl enc -d -aes-256-cbc -pbkdf2 -k "$PASSWORD" -in "$input_file" -out "$output_file"; then
+        echo "Decryption successful."
+
+        # If the decrypted file is a zip, extract it
+        if [[ $output_file == *.zip ]]; then
+            unzip -j "$output_file" -d "${output_file%.zip}"
+            rm "$output_file"
+        fi
+
+        # Delete the input file after successful decryption
+        rm "$input_file"
+    else
+        echo "Decryption failed. Incorrect password or other error."
+        # Remove the partially created output file if decryption fails
+        [[ -f "$output_file" ]] && rm "$output_file"
+        return 1
     fi
-
-    rm "$input_file" # Delete encoded file after successful decryption
 }
+
+
 
 encrypt_folder() {
     local folder=$1
@@ -43,4 +56,3 @@ elif [[ $1 == "decrypt" && -d $3 ]]; then
 else
     echo "Usage: $0 <encrypt|decrypt> <password> <file|folder>"
 fi
-
